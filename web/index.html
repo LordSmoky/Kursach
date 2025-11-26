@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Вход в Банк</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container" id="login-box">
+        <h2>Вход в Личный кабинет</h2>
+        <div class="form-group"><label>Email</label><input type="email" id="login-email"></div>
+        <div class="form-group"><label>Пароль</label><input type="password" id="login-pass"></div>
+        <button onclick="login()">Войти</button>
+        <span class="switch-link" onclick="toggleView()">Нет аккаунта? Зарегистрироваться</span>
+    </div>
+
+    <div class="container hidden" id="register-box">
+        <h2>Регистрация Клиента</h2>
+        <div class="form-group"><label>ФИО</label><input type="text" id="reg-name"></div>
+        <div class="form-group"><label>Паспорт</label><input type="text" id="reg-passport"></div>
+        <div class="form-group"><label>Телефон</label><input type="text" id="reg-phone"></div>
+        <div class="form-group"><label>Email</label><input type="email" id="reg-email"></div>
+        <div class="form-group"><label>Пароль</label><input type="password" id="reg-pass"></div>
+        <button onclick="register()">Создать аккаунт</button>
+        <span class="switch-link" onclick="toggleView()">Уже есть аккаунт? Войти</span>
+    </div>
+
+    <script>
+        const API_URL = 'http://127.0.0.1:5000/api';
+
+        function toggleView() {
+            document.getElementById('login-box').classList.toggle('hidden');
+            document.getElementById('register-box').classList.toggle('hidden');
+        }
+
+        async function login() {
+            const email = document.getElementById('login-email').value;
+            const password = document.getElementById('login-pass').value;
+
+            const res = await fetch(`${API_URL}/login`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({email, password})
+            });
+            const data = await res.json();
+            if (data.success) {
+                window.location.href = '/dashboard';
+            } else {
+                alert(data.error);
+            }
+        }
+
+        async function register() {
+            const body = {
+                full_name: document.getElementById('reg-name').value,
+                passport: document.getElementById('reg-passport').value,
+                phone: document.getElementById('reg-phone').value,
+                email: document.getElementById('reg-email').value,
+                password: document.getElementById('reg-pass').value
+            };
+            
+            const res = await fetch(`${API_URL}/register`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(body)
+            });
+            const data = await res.json();
+            if (data.success) {
+                alert('Регистрация успешна! Войдите.');
+                toggleView();
+            } else {
+                alert('Ошибка: ' + data.error);
+            }
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Мои Депозиты</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+            <h2 id="user-welcome">Добро пожаловать</h2>
+            <button style="width:auto; background:#dc3545;" onclick="logout()">Выйти</button>
+        </div>
+
+        <div class="tabs">
+            <div class="tab active" onclick="switchTab('deposits')">Мои вклады</div>
+            <div class="tab" onclick="switchTab('new')">Открыть вклад</div>
+        </div>
+
+        <div id="tab-deposits">
+            <h3>Активные депозиты и накопления</h3>
+            <div id="deposits-list">Загрузка...</div>
+        </div>
+
+        <div id="tab-new" class="hidden">
+            <h3>Оформление заявки</h3>
+            <div class="form-group">
+                <label>Выберите план</label>
+                <select id="plan-select" onchange="updatePlanDetails()"></select>
+            </div>
+            <div id="plan-desc" style="color: #666; margin-bottom: 10px; font-style: italic;"></div>
+            <div class="form-group">
+                <label>Сумма вклада (руб)</label>
+                <input type="number" id="amount-input">
+            </div>
+            <button onclick="openDeposit()">Оформить вклад</button>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = 'http://127.0.0.1:5000/api';
+        let currentPlans = [];
+
+        // Инициализация
+        loadDeposits();
+        loadPlans();
+
+        function switchTab(tabName) {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            event.target.classList.add('active');
+            
+            document.getElementById('tab-deposits').classList.add('hidden');
+            document.getElementById('tab-new').classList.add('hidden');
+            
+            document.getElementById(`tab-${tabName}`).classList.remove('hidden');
+        }
+
+        async function loadDeposits() {
+            const res = await fetch(`${API_URL}/my_deposits`);
+            if (res.status === 401) window.location.href = '/';
+            
+            const deposits = await res.json();
+            const container = document.getElementById('deposits-list');
+            container.innerHTML = '';
+
+            if (deposits.length === 0) {
+                container.innerHTML = '<p>У вас пока нет открытых вкладов.</p>';
+                return;
+            }
+
+            deposits.forEach(d => {
+                const html = `
+                    <div class="card">
+                        <div style="font-weight:bold; font-size:1.1em">${d.type}</div>
+                        <div>Сумма: <b>${d.amount} ₽</b> | Ставка: ${d.rate}%</div>
+                        <div>Дата открытия: ${d.open_date}</div>
+                        <div style="margin-top:5px">
+                            Статус: <span style="color:${d.status==='active'?'green':'red'}">${d.status}</span>
+                            ${d.status === 'active' ? `<br>Накоплено процентов: <span class="profit">+${d.profit} ₽</span>` : ''}
+                        </div>
+                    </div>
+                `;
+                container.innerHTML += html;
+            });
+        }
+
+        async function loadPlans() {
+            const res = await fetch(`${API_URL}/plans`);
+            currentPlans = await res.json();
+            const select = document.getElementById('plan-select');
+            
+            currentPlans.forEach(p => {
+                const opt = document.createElement('option');
+                opt.value = p.id;
+                opt.text = `${p.name} (${p.rate}%)`;
+                select.appendChild(opt);
+            });
+            updatePlanDetails();
+        }
+
+        function updatePlanDetails() {
+            const planId = parseInt(document.getElementById('plan-select').value);
+            const plan = currentPlans.find(p => p.id === planId);
+            if (plan) {
+                document.getElementById('plan-desc').innerText = 
+                    `${plan.desc}. Мин. сумма: ${plan.min_amount} ₽`;
+                document.getElementById('amount-input').min = plan.min_amount;
+                document.getElementById('amount-input').placeholder = `От ${plan.min_amount}`;
+            }
+        }
+
+        async function openDeposit() {
+            const planId = parseInt(document.getElementById('plan-select').value);
+            const amount = parseFloat(document.getElementById('amount-input').value);
+            const plan = currentPlans.find(p => p.id === planId);
+
+            if (!amount || amount < plan.min_amount) {
+                alert(`Минимальная сумма для этого вклада: ${plan.min_amount}`);
+                return;
+            }
+
+            const res = await fetch(`${API_URL}/open_deposit`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    plan_id: planId,
+                    type_name: plan.name,
+                    rate: plan.rate,
+                    amount: amount
+                })
+            });
+
+            const data = await res.json();
+            if (data.success) {
+                alert('Вклад успешно открыт!');
+                switchTab('deposits');
+                loadDeposits();
+                document.querySelector('.tab').click(); // Вернуть на первую вкладку визуально
+            } else {
+                alert('Ошибка: ' + data.error);
+            }
+        }
+
+        async function logout() {
+            await fetch(`${API_URL}/logout`);
+            window.location.href = '/';
+        }
+    </script>
+</body>
+</html>
