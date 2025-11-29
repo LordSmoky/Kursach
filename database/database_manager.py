@@ -286,29 +286,68 @@ class DatabaseManager:
             }
 
     def open_deposit(self, deposit: Deposit, plan_id: Optional[int] = None) -> int:
-        """Открытие нового депозита с возможностью привязки к плану"""
+        """
+        Создание заявки на депозит (Статус 'pending'). 
+        Транзакция открытия НЕ создается, пока банкир не одобрит.
+        """
         with self.conn.cursor() as cur:
             try:
+                # Статус по умолчанию теперь 'pending'
                 cur.execute("""
                     INSERT INTO deposits (client_id, deposit_plan_id, deposit_type, 
-                                        amount, interest_rate, open_date)
-                    VALUES (%s, %s, %s, %s, %s, %s) RETURNING id
+                                        amount, interest_rate, open_date, status)
+                    VALUES (%s, %s, %s, %s, %s, %s, 'pending') RETURNING id
                 """, (deposit.client_id, plan_id, deposit.deposit_type, 
                       deposit.amount, deposit.interest_rate, deposit.open_date))
                 deposit_id = cur.fetchone()[0]
-                
-                # Фиксируем операцию открытия
-                cur.execute("""
-                    INSERT INTO transactions (deposit_id, type, amount, description)
-                    VALUES (%s, 'open', %s, 'Открытие депозита')
-                """, (deposit_id, deposit.amount))
-                
                 self.conn.commit()
                 return deposit_id
             except Exception as e:
                 self.conn.rollback()
                 raise e
+            
+    def approve_deposit(self, deposit_id: int):
+        """Одобрение заявки банкиром"""
+        with self.conn.cursor() as cur:
+            try:
+                # 1. Получаем данные депозита
+                cur.execute("SELECT amount, open_date FROM deposits WHERE id = %s", (deposit_id,))
+                res = cur.fetchone()
+                if not res: raise ValueError("Депозит не найден")
+                amount, open_date = res
 
+                # 2. Меняем статус на active
+                cur.execute("UPDATE deposits SET status = 'active' WHERE id = %s", (deposit_id,))
+                
+                # 3. Создаем транзакцию открытия (деньги зачислены)
+                cur.execute("""
+                    INSERT INTO transactions (deposit_id, type, amount, description, transaction_date)
+                    VALUES (%s, 'open', %s, 'Вклад одобрен и открыт', CURRENT_TIMESTAMP)
+                """, (deposit_id, amount))
+                
+                self.conn.commit()
+            except Exception as e:
+                self.conn.rollback()
+                raise e
+
+    def reject_deposit(self, deposit_id: int):
+        """Отклонение заявки"""
+        with self.conn.cursor() as cur:
+            cur.execute("UPDATE deposits SET status = 'rejected' WHERE id = %s", (deposit_id,))
+            self.conn.commit()
+
+    def get_pending_deposits(self):
+        """Получение списка заявок на одобрение"""
+        with self.conn.cursor() as cur:
+            cur.execute("""
+                SELECT d.id, c.full_name, d.deposit_type, d.amount, d.open_date
+                FROM deposits d
+                JOIN clients c ON d.client_id = c.id
+                WHERE d.status = 'pending'
+                ORDER BY d.open_date
+            """)
+            return cur.fetchall()
+        
     def get_client_deposits(self, client_id: int) -> List[Deposit]:
         """Получение депозитов клиента"""
         with self.conn.cursor() as cur:
@@ -330,22 +369,36 @@ class DatabaseManager:
             return deposits
 
     def calculate_interest(self, deposit_id: int) -> Decimal:
-        """Расчет начисленных процентов по депозиту"""
+        """
+        Расчет процентов с учетом налога 13%.
+        Формула: Interest = (P * R * T / 365) * (1 - 0.13)
+        """
         with self.conn.cursor() as cur:
             cur.execute("""
-                SELECT amount, interest_rate, open_date 
+                SELECT amount, interest_rate, open_date, status, close_date
                 FROM deposits 
-                WHERE id = %s AND status = 'active'
+                WHERE id = %s
             """, (deposit_id,))
             result = cur.fetchone()
             
-            if not result:
-                raise ValueError("Активный депозит не найден")
+            if not result: return Decimal(0)
             
-            amount, rate, open_date = result
-            days = (date.today() - open_date).days
-            interest = amount * (rate / 100) * days / 365
-            return interest.quantize(Decimal('0.01'))
+            amount, rate, open_date, status, close_date = result
+            
+            # Если закрыт, считаем до даты закрытия, если активен - до сегодня
+            end_date = close_date if status == 'closed' and close_date else date.today()
+            days = (end_date - open_date).days
+            
+            if days <= 0: return Decimal(0)
+
+            # Грязная прибыль
+            gross_interest = amount * (rate / 100) * days / 365
+            
+            # Налог 13%
+            tax_rate = Decimal('0.13')
+            net_interest = gross_interest * (1 - tax_rate)
+            
+            return net_interest.quantize(Decimal('0.01'))
 
     def close_deposit(self, deposit_id: int) -> Decimal:
         """Закрытие депозита и расчет итоговой суммы"""

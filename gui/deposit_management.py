@@ -16,23 +16,17 @@ class DepositManagementFrame:
     def create_widgets(self):
         """Создание виджетов"""
         
-        # Создаем Notebook (Вкладки)
         notebook = ttk.Notebook(self.parent)
         notebook.pack(fill=tk.BOTH, expand=True, padx=20, pady=20)
-        
-        # Стилизация вкладок делается через style.layout в main, здесь просто используем фреймы
-        
-        # 1. Вкладка Открытия (Обернута в Frame с белым фоном из стиля White.TFrame)
+                
         open_frame = ttk.Frame(notebook, style='White.TFrame', padding=20)
         self.create_open_deposit_tab(open_frame)
         notebook.add(open_frame, text="  ➕ Открыть депозит  ")
         
-        # 2. Вкладка Просмотра
         view_frame = ttk.Frame(notebook, style='White.TFrame', padding=20)
         self.create_view_deposits_tab(view_frame)
         notebook.add(view_frame, text="  📋 Список депозитов  ")
         
-        # 3. Вкладка Закрытия
         close_frame = ttk.Frame(notebook, style='White.TFrame', padding=20)
         self.create_close_deposit_tab(close_frame)
         notebook.add(close_frame, text="  ❌ Закрытие  ")
@@ -40,11 +34,9 @@ class DepositManagementFrame:
     def create_open_deposit_tab(self, parent):
         ttk.Label(parent, text="Оформление нового договора", style='SubHeader.TLabel').grid(row=0, column=0, columnspan=2, pady=(0, 20), sticky='w')
         
-        # Сетка для формы
         form_frame = ttk.Frame(parent, style='White.TFrame')
         form_frame.grid(row=1, column=0, sticky='nsew')
 
-        # Выбор плана
         ttk.Label(form_frame, text="Депозитный план:", style='TLabel').grid(row=0, column=0, sticky='w', pady=10)
         self.plan_combo = ttk.Combobox(form_frame, state="readonly", width=35, font=('Segoe UI', 10))
         self.plan_combo.grid(row=0, column=1, sticky='w', padx=10, pady=10)
@@ -52,11 +44,10 @@ class DepositManagementFrame:
         
         self.load_deposit_plans()
         
-        # Поля ввода
         fields = [
             ("ID клиента*", "client_id"),
             ("Тип депозита*", "deposit_type"),
-            ("Сумма (₽)*", "amount"),
+            ("Сумма (BYN)*", "amount"),
             ("Ставка (%)*", "interest_rate")
         ]
         
@@ -67,16 +58,13 @@ class DepositManagementFrame:
             entry.grid(row=i, column=1, sticky='w', padx=10, pady=10)
             self.open_entries[key] = entry
 
-        # Кнопка действия (Стиль Primary)
         btn_frame = ttk.Frame(parent, style='White.TFrame')
         btn_frame.grid(row=2, column=0, pady=30, sticky='w')
         
         ttk.Button(btn_frame, text="Оформить депозит", style='Primary.TButton', command=self.open_deposit_action).pack()
 
     def open_deposit_action(self):
-        # Логика та же самая, вынесена в отдельный метод для чистоты
         try:
-            # Валидация
             amount_str = self.open_entries['amount'].get().replace(',', '.')
             rate_str = self.open_entries['interest_rate'].get().replace(',', '.')
             client_id_str = self.open_entries['client_id'].get()
@@ -109,7 +97,6 @@ class DepositManagementFrame:
             new_id = self.db_manager.open_deposit(deposit, plan_id)
             messagebox.showinfo("Успех", f"Депозит №{new_id} успешно открыт")
             
-            # Очистка
             for entry in self.open_entries.values(): entry.delete(0, tk.END)
             self.plan_combo.set("")
             
@@ -136,7 +123,6 @@ class DepositManagementFrame:
                     self.open_entries['interest_rate'].insert(0, str(p.interest_rate))
 
     def create_view_deposits_tab(self, parent):
-        # Панель поиска
         search_frame = ttk.Frame(parent, style='White.TFrame')
         search_frame.pack(fill=tk.X, pady=(0, 20))
         

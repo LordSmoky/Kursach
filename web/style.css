@@ -1,15 +1,266 @@
-body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f0f2f5; margin: 0; padding: 0; }
-.container { max-width: 800px; margin: 50px auto; background: white; padding: 30px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
-h2 { color: #333; text-align: center; }
-.form-group { margin-bottom: 15px; }
-label { display: block; margin-bottom: 5px; color: #666; }
-input, select { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px; box-sizing: border-box; }
-button { width: 100%; padding: 12px; background-color: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 16px; }
-button:hover { background-color: #0056b3; }
-.tabs { display: flex; justify-content: center; margin-bottom: 20px; border-bottom: 1px solid #ddd; }
-.tab { padding: 10px 20px; cursor: pointer; color: #666; }
-.tab.active { color: #007bff; border-bottom: 2px solid #007bff; font-weight: bold; }
-.card { background: #f8f9fa; border: 1px solid #e9ecef; padding: 15px; border-radius: 5px; margin-bottom: 10px; }
-.profit { color: green; font-weight: bold; }
-.hidden { display: none; }
-.switch-link { text-align: center; margin-top: 10px; display: block; cursor: pointer; color: #007bff; }
+/* ИМПОРТ ШРИФТОВ */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+/* ПЕРЕМЕННЫЕ ЦВЕТОВ (ПАЛИТРА) */
+:root {
+    --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    --secondary-gradient: linear-gradient(135deg, #fdfbfb 0%, #ebedee 100%);
+    --accent-green: #10B981;
+    --accent-red: #EF4444;
+    --text-dark: #1F2937;
+    --text-light: #6B7280;
+    --bg-color: #F3F4F6;
+    --card-bg: #FFFFFF;
+    --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+    --radius: 16px;
+}
+
+body {
+    font-family: 'Inter', sans-serif;
+    background-color: var(--bg-color);
+    /* Фоновый узор */
+    background-image: radial-gradient(#E5E7EB 1px, transparent 1px);
+    background-size: 20px 20px;
+    margin: 0;
+    padding: 0;
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    color: var(--text-dark);
+}
+
+/* КОНТЕЙНЕР */
+.container {
+    background: var(--card-bg);
+    width: 100%;
+    max-width: 900px;
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-lg);
+    padding: 40px;
+    margin: 20px;
+    position: relative;
+    overflow: hidden;
+    animation: fadeIn 0.5s ease-out;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* ЗАГОЛОВКИ */
+h2, h3 {
+    margin-top: 0;
+    font-weight: 700;
+    color: #111827;
+}
+
+h2 {
+    font-size: 28px;
+    margin-bottom: 24px;
+    text-align: center;
+    background: var(--primary-gradient);
+    -webkit-text-fill-color: white;
+}
+
+/* ФОРМЫ И INPUTS */
+.form-group {
+    margin-bottom: 20px;
+    position: relative;
+}
+
+label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 500;
+    font-size: 14px;
+    color: var(--text-light);
+}
+
+input, select {
+    width: 100%;
+    padding: 12px 16px;
+    border: 2px solid #E5E7EB;
+    border-radius: 12px;
+    font-size: 16px;
+    font-family: inherit;
+    transition: all 0.3s ease;
+    box-sizing: border-box;
+    background: #F9FAFB;
+}
+
+input:focus, select:focus {
+    outline: none;
+    border-color: #667eea;
+    background: #fff;
+    box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
+}
+
+/* КНОПКИ */
+button {
+    width: 100%;
+    padding: 14px;
+    background: var(--primary-gradient);
+    color: white;
+    border: none;
+    border-radius: 12px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: transform 0.2s, box-shadow 0.2s;
+    box-shadow: 0 4px 6px rgba(118, 75, 162, 0.2);
+}
+
+button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 12px rgba(118, 75, 162, 0.3);
+}
+
+button:active {
+    transform: translateY(0);
+}
+
+.btn-danger {
+    background: #ff4757; /* Красный для выхода */
+    box-shadow: 0 4px 6px rgba(255, 71, 87, 0.2);
+}
+
+/* ТАБЫ (ВКЛАДКИ) */
+.tabs {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 30px;
+    background: #F3F4F6;
+    padding: 6px;
+    border-radius: 14px;
+    display: inline-flex; /* Чтобы табы не растягивались на всю ширину */
+    width: auto;
+    position: relative;
+    left: 50%;
+    transform: translateX(-50%);
+}
+
+.tab {
+    padding: 10px 24px;
+    cursor: pointer;
+    color: var(--text-light);
+    font-weight: 500;
+    border-radius: 10px;
+    transition: all 0.3s ease;
+}
+
+.tab.active {
+    background: white;
+    color: #667eea;
+    font-weight: 600;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+/* КАРТОЧКИ ДЕПОЗИТОВ */
+#deposits-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 20px;
+}
+
+.card {
+    background: white;
+    border: 1px solid #F3F4F6;
+    border-radius: 20px;
+    padding: 24px;
+    position: relative;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: var(--shadow-sm);
+    overflow: hidden;
+}
+
+.card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 6px;
+    height: 100%;
+    background: var(--primary-gradient);
+}
+
+.card:hover {
+    transform: translateY(-5px);
+    box-shadow: var(--shadow-lg);
+}
+
+.card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+}
+
+.card-title {
+    font-weight: 700;
+    font-size: 18px;
+    color: #374151;
+}
+
+.card-amount {
+    font-size: 24px;
+    font-weight: 800;
+    color: #111827;
+    margin: 10px 0;
+}
+
+.card-meta {
+    font-size: 13px;
+    color: #9CA3AF;
+    display: flex;
+    justify-content: space-between;
+}
+
+.status-badge {
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.status-active { background: #D1FAE5; color: #065F46; }
+.status-closed { background: #FEE2E2; color: #991B1B; }
+
+.profit-text {
+    color: var(--accent-green);
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+/* ССЫЛКИ И УТИЛИТЫ */
+.switch-link {
+    text-align: center;
+    margin-top: 20px;
+    display: block;
+    cursor: pointer;
+    color: #667eea;
+    font-weight: 500;
+    transition: color 0.2s;
+}
+.switch-link:hover { color: #764ba2; text-decoration: underline; }
+.hidden { display: none !important; }
+
+/* ОПИСАНИЕ ПЛАНА */
+#plan-desc {
+    background: #EFF6FF;
+    border-left: 4px solid #667eea;
+    padding: 15px;
+    border-radius: 0 8px 8px 0;
+    color: #1E3A8A;
+    font-size: 14px;
+    margin-bottom: 20px;
+}
+
+.status-pending { background: #FEF3C7; color: #D97706; } /* Желтый для ожидания */
+.status-rejected { background: #F3F4F6; color: #6B7280; text-decoration: line-through; }

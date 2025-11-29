@@ -98,6 +98,7 @@ def get_my_deposits():
             "amount": float(d.amount),
             "rate": float(d.interest_rate),
             "open_date": d.open_date.isoformat(),
+            "close_date": d.close_date.isoformat() if d.close_date else None, # <--- ДОБАВЛЕНО
             "status": d.status,
             "profit": float(profit)
         })

@@ -2,25 +2,59 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Вход в Банк</title>
     <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
 <body>
-    <div class="container" id="login-box">
-        <h2>Вход в Личный кабинет</h2>
-        <div class="form-group"><label>Email</label><input type="email" id="login-email"></div>
-        <div class="form-group"><label>Пароль</label><input type="password" id="login-pass"></div>
-        <button onclick="login()">Войти</button>
+    
+    <div class="container" id="login-box" style="max-width: 450px;">
+        <div style="text-align: center; margin-bottom: 30px;">
+            <i class="fas fa-university fa-3x" style="background: var(--primary-gradient); -webkit-text-fill-color: white;"></i>
+        </div>
+        <h2>Личный кабинет</h2>
+        
+        <div class="form-group">
+            <label><i class="fas fa-envelope"></i> Email</label>
+            <input type="email" id="login-email" placeholder="name@example.com">
+        </div>
+        <div class="form-group">
+            <label><i class="fas fa-lock"></i> Пароль</label>
+            <input type="password" id="login-pass" placeholder="••••••••">
+        </div>
+        
+        <button onclick="login()">Войти в систему <i class="fas fa-arrow-right"></i></button>
         <span class="switch-link" onclick="toggleView()">Нет аккаунта? Зарегистрироваться</span>
     </div>
 
-    <div class="container hidden" id="register-box">
-        <h2>Регистрация Клиента</h2>
-        <div class="form-group"><label>ФИО</label><input type="text" id="reg-name"></div>
-        <div class="form-group"><label>Паспорт</label><input type="text" id="reg-passport"></div>
-        <div class="form-group"><label>Телефон</label><input type="text" id="reg-phone"></div>
-        <div class="form-group"><label>Email</label><input type="email" id="reg-email"></div>
-        <div class="form-group"><label>Пароль</label><input type="password" id="reg-pass"></div>
+    <div class="container hidden" id="register-box" style="max-width: 500px;">
+        <div style="text-align: center;">
+            <i class="fas fa-user-plus fa-2x" style="color: #667eea;"></i>
+        </div>
+        <h2>Регистрация</h2>
+        
+        <div class="form-group">
+            <label>ФИО</label>
+            <input type="text" id="reg-name" placeholder="Иванов Иван Иванович">
+        </div>
+        <div class="form-group">
+            <label>Паспортные данные</label>
+            <input type="text" id="reg-passport" placeholder="Серия и номер">
+        </div>
+        <div class="form-group">
+            <label>Телефон</label>
+            <input type="text" id="reg-phone" placeholder="+7 (999) 000-00-00">
+        </div>
+        <div class="form-group">
+            <label>Email</label>
+            <input type="email" id="reg-email">
+        </div>
+        <div class="form-group">
+            <label>Пароль</label>
+            <input type="password" id="reg-pass">
+        </div>
+        
         <button onclick="register()">Создать аккаунт</button>
         <span class="switch-link" onclick="toggleView()">Уже есть аккаунт? Войти</span>
     </div>
@@ -29,24 +63,43 @@
         const API_URL = 'http://127.0.0.1:5000/api';
 
         function toggleView() {
-            document.getElementById('login-box').classList.toggle('hidden');
-            document.getElementById('register-box').classList.toggle('hidden');
+            // Анимация переключения
+            const loginBox = document.getElementById('login-box');
+            const regBox = document.getElementById('register-box');
+            
+            if (loginBox.classList.contains('hidden')) {
+                regBox.classList.add('hidden');
+                loginBox.classList.remove('hidden');
+            } else {
+                loginBox.classList.add('hidden');
+                regBox.classList.remove('hidden');
+            }
         }
 
         async function login() {
+            const btn = document.querySelector('button');
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Вход...';
+            
             const email = document.getElementById('login-email').value;
             const password = document.getElementById('login-pass').value;
 
-            const res = await fetch(`${API_URL}/login`, {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({email, password})
-            });
-            const data = await res.json();
-            if (data.success) {
-                window.location.href = '/dashboard';
-            } else {
-                alert(data.error);
+            try {
+                const res = await fetch(`${API_URL}/login`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({email, password})
+                });
+                const data = await res.json();
+                if (data.success) {
+                    window.location.href = '/dashboard';
+                } else {
+                    alert(data.error);
+                }
+            } catch (e) {
+                alert("Ошибка соединения с сервером");
+            } finally {
+                btn.innerHTML = originalText;
             }
         }
 

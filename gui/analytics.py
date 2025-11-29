@@ -70,48 +70,60 @@ class AnalyticsFrame:
             self.stats_label.config(text=f"Ошибка расчета: {e}")
 
     def draw_charts(self):
-        """Отрисовка графиков с использованием Matplotlib"""
-        # Очистка предыдущих графиков
+        """Отрисовка графиков (FIX: Устранено наложение текста и подписей)"""
+        # Очистка фрейма
         for widget in self.charts_frame.winfo_children():
             widget.destroy()
 
-        # Создание фигуры Matplotlib (1 строка, 2 колонки)
-        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(10, 5), dpi=100)
-        fig.suptitle('Визуализация данных', fontsize=12)
+        # Создание двух графиков в одной фигуре. Увеличиваем размер для лучшей читаемости.
+        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 7), dpi=100)
+        fig.suptitle('Аналитика портфеля', fontsize=16, fontweight='bold')
 
-        # --- График 1: Круговая диаграмма (Типы депозитов) ---
+        # --- График 1: Круговая диаграмма (Объем по типам) ---
         type_data = self.db_manager.get_deposits_by_type_stats()
+        
         if type_data:
             labels = [row[0] for row in type_data]
-            sizes = [row[2] for row in type_data] # Используем сумму денег, а не кол-во
-            ax1.pie(sizes, labels=labels, autopct='%1.1f%%', startangle=90)
-            ax1.set_title('Объем средств по типам вкладов')
+            sizes = [row[2] for row in type_data]
+            
+            # FIX 1: Убираем подписи и проценты с круга, чтобы он был чистым
+            wedges, texts = ax1.pie(sizes, startangle=90) # Убрали labels и autopct
+            
+            ax1.set_title('Объем средств по типам вкладов', fontsize=12)
+            
+            # Используем легенду для отображения названий и долей
+            ax1.legend(wedges, labels, title="Типы", loc="center left", 
+                       # FIX 2: Увеличиваем отступ легенды, чтобы не накладывалась на второй график
+                       bbox_to_anchor=(0.95, 0, 0.5, 1)) 
+            ax1.axis('equal')  # Делаем круг идеальным
 
-        # --- График 2: Линейный тренд (Динамика) + Линия регрессии ---
+        # --- График 2: Динамика открытий ---
         timeline_data = self.db_manager.get_deposits_timeline()
+        
         if timeline_data:
             dates = [row[0] for row in timeline_data]
             values = [float(row[1]) for row in timeline_data]
             
-            # Построение основного графика
-            ax2.plot(dates, values, marker='o', label='Фактические данные')
+            ax2.plot(dates, values, marker='o', markersize=4, label='Приток средств', color='#667eea')
             
-            # --- МАТЕМАТИЧЕСКИЙ АППАРАТ: Линейная регрессия (Тренд) ---
-            # Преобразуем даты в числа для регрессии
+            # Добавление линии тренда
             x_nums = np.arange(len(dates))
-            
-            # Вычисляем коэффициенты полинома 1-й степени (y = mx + b)
             if len(dates) > 1:
-                z = np.polyfit(x_nums, values, 1) 
+                z = np.polyfit(x_nums, values, 1)
                 p = np.poly1d(z)
-                ax2.plot(dates, p(x_nums), "r--", label=f'Тренд (y={z[0]:.2f}x+{z[1]:.0f})')
+                ax2.plot(dates, p(x_nums), "r--", alpha=0.7, label='Тренд')
 
-            ax2.set_title('Динамика привлечения средств')
-            ax2.tick_params(axis='x', rotation=45)
+            ax2.set_title('Динамика открытий депозитов', fontsize=12)
+            ax2.set_ylabel('Объем открытых депозитов (BYN))')
+            ax2.grid(axis='y', alpha=0.5, linestyle='--')
             ax2.legend()
-            ax2.grid(True)
 
-        # Интеграция в Tkinter
+            # FIX 3: Автоматический поворот и форматирование дат, чтобы они не наезжали друг на друга
+            fig.autofmt_xdate(rotation=45)
+
+        # FIX 4: Убедимся, что элементы не накладываются друг на друга на общем холсте
+        plt.tight_layout(rect=[0, 0.03, 1, 0.95]) 
+
         canvas = FigureCanvasTkAgg(fig, master=self.charts_frame)
         canvas.draw()
         canvas.get_tk_widget().pack(side=tk.TOP, fill=tk.BOTH, expand=True)

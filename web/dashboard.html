@@ -2,38 +2,66 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Мои Депозиты</title>
     <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
 <body>
     <div class="container">
-        <div style="display:flex; justify-content:space-between; align-items:center;">
-            <h2 id="user-welcome">Добро пожаловать</h2>
-            <button style="width:auto; background:#dc3545;" onclick="logout()">Выйти</button>
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 30px;">
+            <div>
+                <h2 id="user-welcome" style="margin:0; text-align:left;">Добро пожаловать</h2>
+                <p style="color: #6B7280; margin: 5px 0 0 0;">Управляйте своими активами</p>
+            </div>
+            <button class="btn-danger" style="width:auto; padding: 10px 20px;" onclick="logout()">
+                <i class="fas fa-sign-out-alt"></i> Выйти
+            </button>
         </div>
 
         <div class="tabs">
-            <div class="tab active" onclick="switchTab('deposits')">Мои вклады</div>
-            <div class="tab" onclick="switchTab('new')">Открыть вклад</div>
+            <div class="tab active" onclick="switchTab('deposits')"><i class="fas fa-wallet"></i> Активные</div>
+            <div class="tab" onclick="switchTab('closed')"><i class="fas fa-history"></i> Закрытые</div> <div class="tab" onclick="switchTab('new')"><i class="fas fa-plus-circle"></i> Открыть</div>
         </div>
 
         <div id="tab-deposits">
-            <h3>Активные депозиты и накопления</h3>
-            <div id="deposits-list">Загрузка...</div>
+            <div id="deposits-list">
+                <div style="text-align:center; padding: 40px; color: #9CA3AF;">
+                    <i class="fas fa-spinner fa-spin fa-2x"></i><br>Загрузка данных...
+                </div>
+            </div>
+        </div>
+
+        <div id="tab-closed" class="hidden">
+            <h3 style="margin-bottom:20px">История закрытых вкладов</h3>
+            <div id="closed-deposits-list"></div>
         </div>
 
         <div id="tab-new" class="hidden">
-            <h3>Оформление заявки</h3>
-            <div class="form-group">
-                <label>Выберите план</label>
-                <select id="plan-select" onchange="updatePlanDetails()"></select>
+            <div style="max-width: 600px; margin: 0 auto;">
+                <h3 style="text-align: center; margin-bottom: 25px;">Новая заявка</h3>
+                
+                <div class="form-group">
+                    <label>Выберите продукт</label>
+                    <select id="plan-select" onchange="updatePlanDetails()"></select>
+                </div>
+                
+                <div id="plan-desc">
+                    <i class="fas fa-info-circle"></i> Выберите план, чтобы увидеть условия.
+                </div>
+                
+                <div class="form-group">
+                    <label>Сумма инвестиций (BYN)</label>
+                    <div style="position: relative;">
+                        <span style="position: absolute; left: 15px; top: 12px; color: #9CA3AF;">BYN</span>
+                        <input type="number" id="amount-input" style="padding-left: 35px;">
+                    </div>
+                </div>
+                
+                <button onclick="openDeposit()" style="margin-top: 10px;">
+                    Подтвердить открытие <i class="fas fa-check"></i>
+                </button>
             </div>
-            <div id="plan-desc" style="color: #666; margin-bottom: 10px; font-style: italic;"></div>
-            <div class="form-group">
-                <label>Сумма вклада (руб)</label>
-                <input type="number" id="amount-input">
-            </div>
-            <button onclick="openDeposit()">Оформить вклад</button>
         </div>
     </div>
 
@@ -41,7 +69,6 @@
         const API_URL = 'http://127.0.0.1:5000/api';
         let currentPlans = [];
 
-        // Инициализация
         loadDeposits();
         loadPlans();
 
@@ -49,10 +76,13 @@
             document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
             event.target.classList.add('active');
             
-            document.getElementById('tab-deposits').classList.add('hidden');
-            document.getElementById('tab-new').classList.add('hidden');
+            ['tab-deposits', 'tab-new', 'tab-closed'].forEach(id => {
+                document.getElementById(id).classList.add('hidden');
+            });
             
-            document.getElementById(`tab-${tabName}`).classList.remove('hidden');
+            const activeTab = document.getElementById(`tab-${tabName}`);
+            activeTab.classList.remove('hidden');
+            activeTab.style.animation = 'fadeIn 0.3s ease-out';
         }
 
         async function loadDeposits() {
@@ -60,28 +90,75 @@
             if (res.status === 401) window.location.href = '/';
             
             const deposits = await res.json();
-            const container = document.getElementById('deposits-list');
-            container.innerHTML = '';
-
-            if (deposits.length === 0) {
-                container.innerHTML = '<p>У вас пока нет открытых вкладов.</p>';
-                return;
-            }
+            
+            // Контейнеры
+            const activeContainer = document.getElementById('deposits-list');
+            const closedContainer = document.getElementById('closed-deposits-list');
+            activeContainer.innerHTML = '';
+            closedContainer.innerHTML = '';
 
             deposits.forEach(d => {
+                const isClosed = d.status === 'closed';
+                const isPending = d.status === 'pending';
+                
+                let statusClass = 'status-active';
+                let statusText = 'Активен';
+                
+                if (isClosed) { statusClass = 'status-closed'; statusText = 'Закрыт'; }
+                if (isPending) { statusClass = 'status-pending'; statusText = 'На проверке'; }
+                if (d.status === 'rejected') { statusClass = 'status-rejected'; statusText = 'Отклонен'; }
+
+                const formattedAmount = new Intl.NumberFormat('ru-RU').format(d.amount);
+                // Для закрытых вкладов: сумма + чистый процент
+                const finalSum = d.amount + d.profit; 
+                const formattedFinal = new Intl.NumberFormat('ru-RU').format(finalSum);
+                const formattedProfit = new Intl.NumberFormat('ru-RU').format(d.profit);
+
                 const html = `
                     <div class="card">
-                        <div style="font-weight:bold; font-size:1.1em">${d.type}</div>
-                        <div>Сумма: <b>${d.amount} ₽</b> | Ставка: ${d.rate}%</div>
-                        <div>Дата открытия: ${d.open_date}</div>
-                        <div style="margin-top:5px">
-                            Статус: <span style="color:${d.status==='active'?'green':'red'}">${d.status}</span>
-                            ${d.status === 'active' ? `<br>Накоплено процентов: <span class="profit">+${d.profit} ₽</span>` : ''}
+                        <div class="card-header">
+                            <span class="status-badge ${statusClass}">${statusText}</span>
+                            <span style="font-weight:600; color:#667eea;">${d.rate}%</span>
                         </div>
+                        <div class="card-title">${d.type}</div>
+                        
+                        ${isClosed ? 
+                            `<div style="font-size:18px; font-weight:bold; color:#374151">Итог: ${formattedFinal} BYN</div>
+                             <div style="font-size:13px; color:#6B7280">Вклад: ${formattedAmount} BYN</div>` 
+                            : 
+                            `<div class="card-amount">${formattedAmount} BYN</div>`
+                        }
+                        
+                        <div style="margin: 10px 0; border-top: 1px dashed #E5E7EB;"></div>
+                        
+                        <div class="card-meta">
+                            <span>${isClosed ? 'Закрыт:' : 'Открыт:'}</span>
+                            <span>${isClosed && d.close_date ? d.close_date : d.open_date}</span>
+                        </div>
+
+                        ${!isPending && !isClosed ? `
+                        <div style="margin-top:10px; display:flex; justify-content:space-between;">
+                             <span style="font-size:13px; color:#9CA3AF;">Чистая прибыль (-13%):</span>
+                             <span class="profit-text">+${formattedProfit} BYN</span>
+                        </div>` : ''}
+                        
+                        ${isClosed ? `
+                        <div style="margin-top:10px; display:flex; justify-content:space-between;">
+                             <span style="font-size:13px; color:#9CA3AF;">Полученный доход:</span>
+                             <span style="color:#10B981; font-weight:bold;">+${formattedProfit} BYN</span>
+                        </div>` : ''}
                     </div>
                 `;
-                container.innerHTML += html;
+
+                if (isClosed) {
+                    closedContainer.innerHTML += html;
+                } else {
+                    activeContainer.innerHTML += html;
+                }
             });
+            
+            if (activeContainer.innerHTML === '') activeContainer.innerHTML = '<p style="text-align:center; color:#999">Нет активных вкладов</p>';
+            if (closedContainer.innerHTML === '') closedContainer.innerHTML = '<p style="text-align:center; color:#999">История пуста</p>';
         }
 
         async function loadPlans() {
@@ -92,7 +169,7 @@
             currentPlans.forEach(p => {
                 const opt = document.createElement('option');
                 opt.value = p.id;
-                opt.text = `${p.name} (${p.rate}%)`;
+                opt.text = `${p.name} — ${p.rate}%`;
                 select.appendChild(opt);
             });
             updatePlanDetails();
@@ -102,10 +179,14 @@
             const planId = parseInt(document.getElementById('plan-select').value);
             const plan = currentPlans.find(p => p.id === planId);
             if (plan) {
-                document.getElementById('plan-desc').innerText = 
-                    `${plan.desc}. Мин. сумма: ${plan.min_amount} ₽`;
+                const minAmt = new Intl.NumberFormat('ru-RU').format(plan.min_amount);
+                document.getElementById('plan-desc').innerHTML = `
+                    <strong>${plan.name}</strong><br>
+                    ${plan.desc}<br><br>
+                    Минимальная сумма: <b>${minAmt} BYN</b>
+                `;
                 document.getElementById('amount-input').min = plan.min_amount;
-                document.getElementById('amount-input').placeholder = `От ${plan.min_amount}`;
+                document.getElementById('amount-input').placeholder = `Минимум ${minAmt}`;
             }
         }
 
@@ -115,9 +196,12 @@
             const plan = currentPlans.find(p => p.id === planId);
 
             if (!amount || amount < plan.min_amount) {
-                alert(`Минимальная сумма для этого вклада: ${plan.min_amount}`);
+                alert(`Минимальная сумма для этого вклада: ${plan.min_amount} BYN`);
                 return;
             }
+
+            const btn = document.querySelector('#tab-new button');
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Обработка...';
 
             const res = await fetch(`${API_URL}/open_deposit`, {
                 method: 'POST',
@@ -131,11 +215,14 @@
             });
 
             const data = await res.json();
+            btn.innerHTML = 'Подтвердить открытие <i class="fas fa-check"></i>';
+
             if (data.success) {
-                alert('Вклад успешно открыт!');
-                switchTab('deposits');
+                alert('Поздравляем! Вклад успешно открыт.');
+                document.getElementById('amount-input').value = '';
+                // Принудительно переключаем вкладку через эмуляцию клика
+                document.querySelector('.tab').click(); 
                 loadDeposits();
-                document.querySelector('.tab').click(); // Вернуть на первую вкладку визуально
             } else {
                 alert('Ошибка: ' + data.error);
             }

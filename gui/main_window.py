@@ -5,7 +5,8 @@ from gui.deposit_management import DepositManagementFrame
 from gui.transaction_views import TransactionViewsFrame
 from gui.deposit_plans import DepositPlansFrame
 from gui.analytics import AnalyticsFrame
-from gui.styles import setup_styles, COLORS # Импортируем стили
+from gui.deposit_requests import DepositRequestsFrame
+from gui.styles import setup_styles, COLORS
 
 class MainWindow:
     def __init__(self, root, db_manager):
@@ -42,6 +43,7 @@ class MainWindow:
 
         # Кнопки навигации
         nav_items = [
+            ("🔔  Заявки", self.show_requests),
             ("📈  Аналитика", self.show_analytics),
             ("👥  Клиенты", self.show_client_management),
             ("💰  Депозиты", self.show_deposit_management),
@@ -70,6 +72,13 @@ class MainWindow:
     # --- МЕТОДЫ ПЕРЕКЛЮЧЕНИЯ СТРАНИЦ ---
     # Мы передаем self.show_analytics как callback "назад", 
     # чтобы кнопка "Назад" во фреймах возвращала на дашборд.
+
+    def show_requests(self):
+        self.clear_content()
+        ttk.Label(self.content_frame, text="Входящие заявки на открытие", style='Header.TLabel').pack(anchor='w', pady=(0, 20))
+        container = ttk.Frame(self.content_frame, style='White.TFrame')
+        container.pack(fill=tk.BOTH, expand=True)
+        DepositRequestsFrame(container, self.db_manager, lambda: None)
 
     def show_analytics(self):
         self.clear_content()

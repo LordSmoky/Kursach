@@ -7,8 +7,6 @@ def add_password():
     with conn.cursor() as cur:
         try:
             cur.execute("ALTER TABLE clients ADD COLUMN password_hash VARCHAR(255);")
-            # Установим временный пароль '123' для существующих (хэш для примера)
-            # В реальности нужно генерировать хэши через werkzeug
             print("Колонка password_hash добавлена.")
         except Exception as e:
             print(f"Ошибка (возможно колонка уже есть): {e}")
