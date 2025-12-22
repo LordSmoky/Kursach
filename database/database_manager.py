@@ -370,33 +370,42 @@ class DatabaseManager:
 
     def calculate_interest(self, deposit_id: int) -> Decimal:
         """
-        Расчет процентов с учетом налога 13%.
-        Формула: Interest = (P * R * T / 365) * (1 - 0.13)
+        Расчет процентов. Для закрытых вкладов берет данные из транзакций.
         """
         with self.conn.cursor() as cur:
+            # 1. Сначала проверяем, нет ли уже зафиксированной транзакции закрытия
             cur.execute("""
-                SELECT amount, interest_rate, open_date, status, close_date
-                FROM deposits 
-                WHERE id = %s
+                SELECT amount FROM transactions 
+                WHERE deposit_id = %s AND type = 'close'
+                LIMIT 1
             """, (deposit_id,))
-            result = cur.fetchone()
+            closed_tx = cur.fetchone()
             
-            if not result: return Decimal(0)
+            # Получаем основные данные вклада
+            cur.execute("""
+                SELECT amount, interest_rate, open_date, status, close_date 
+                FROM deposits WHERE id = %s
+            """, (deposit_id,))
+            res = cur.fetchone()
+            if not res: return Decimal('0.00')
             
-            amount, rate, open_date, status, close_date = result
-            
-            # Если закрыт, считаем до даты закрытия, если активен - до сегодня
-            end_date = close_date if status == 'closed' and close_date else date.today()
+            amount, rate, open_date, status, close_date = res
+
+            # 2. Если вклад закрыт и есть транзакция выплаты
+            if status == 'closed' and closed_tx:
+                # Профит = (Всего выплачено) - (Тело вклада)
+                total_paid = closed_tx[0]
+                return (total_paid - amount).quantize(Decimal('0.01'))
+
+            # 3. Если вклад активен или транзакция не найдена, считаем по формуле
+            end_date = close_date if (status == 'closed' and close_date) else date.today()
             days = (end_date - open_date).days
             
-            if days <= 0: return Decimal(0)
+            if days <= 0: return Decimal('0.00')
 
-            # Грязная прибыль
-            gross_interest = amount * (rate / 100) * days / 365
-            
-            # Налог 13%
-            tax_rate = Decimal('0.13')
-            net_interest = gross_interest * (1 - tax_rate)
+            # Расчет с налогом 13%
+            gross_interest = amount * (rate / 100) * Decimal(days) / Decimal(365)
+            net_interest = gross_interest * Decimal('0.87')
             
             return net_interest.quantize(Decimal('0.01'))
 

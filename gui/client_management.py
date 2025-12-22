@@ -37,7 +37,6 @@ class ClientManagementFrame:
         ttk.Button(self.parent, text="➕ Добавить клиента", 
                   command=self.show_add_client).grid(row=1, column=2, pady=10, padx=10)
         
-        # Таблица клиентов
         columns = ('ID', 'ФИО', 'Паспорт', 'Телефон', 'Email', 'Дата регистрации')
         self.tree = ttk.Treeview(self.parent, columns=columns, show='headings', height=15)
         
@@ -95,7 +94,7 @@ class ClientManagementFrame:
         """Отображение диалога добавления клиента"""
         dialog = tk.Toplevel(self.parent)
         dialog.title("Добавление клиента")
-        dialog.geometry("400x300")
+        dialog.geometry("400x350")
         dialog.transient(self.parent)
         dialog.grab_set()
         
@@ -105,32 +104,67 @@ class ClientManagementFrame:
             ("Паспортные данные*", "passport"),
             ("Телефон*", "phone"),
             ("Email", "email"),
-            ("Адрес", "address")
+            ("Адрес", "address"),
+            ("Пароль для онлайн-банка", "password")
         ]
         
         entries = {}
         for i, (label, key) in enumerate(fields):
             ttk.Label(dialog, text=label).grid(row=i, column=0, sticky=tk.W, pady=5, padx=10)
-            entry = ttk.Entry(dialog, width=30)
+            
+            if key == 'password':
+                # Поле для пароля со звездочками
+                entry = ttk.Entry(dialog, width=30, show='*')
+            else:
+                entry = ttk.Entry(dialog, width=30)
+                
             entry.grid(row=i, column=1, sticky=(tk.W, tk.E), pady=5, padx=10)
             entries[key] = entry
         
         def save_client():
             try:
-                client = Client(
-                    id=None,
-                    full_name=entries['full_name'].get().strip(),
-                    passport_data=entries['passport'].get().strip(),
-                    phone_number=entries['phone'].get().strip(),
-                    email=entries['email'].get().strip(),
-                    address=entries['address'].get().strip()
-                )
+                # Получаем данные
+                full_name = entries['full_name'].get().strip()
+                passport = entries['passport'].get().strip()
+                phone = entries['phone'].get().strip()
+                email = entries['email'].get().strip()
+                address = entries['address'].get().strip()
+                password = entries['password'].get().strip()  # ← ДОБАВЛЕНО
                 
-                if not client.full_name or not client.passport_data or not client.phone_number:
+                # Проверяем обязательные поля
+                if not all([full_name, passport, phone]):
                     messagebox.showwarning("Предупреждение", "Поля с * обязательны для заполнения")
                     return
                 
-                client_id = self.db_manager.create_client(client)
+                # Создаем клиента
+                client = Client(
+                    id=None,
+                    full_name=full_name,
+                    passport_data=passport,
+                    phone_number=phone,
+                    email=email,
+                    address=address
+                )
+                
+                # Если пароль указан, создаем клиента с паролем (через прямой SQL)
+                if password:
+                    from werkzeug.security import generate_password_hash
+                    password_hash = generate_password_hash(password)
+                    
+                    with self.db_manager.conn.cursor() as cur:
+                        cur.execute("""
+                            INSERT INTO clients (full_name, passport_data, phone_number, 
+                                            email, address, password_hash) 
+                            VALUES (%s, %s, %s, %s, %s, %s) RETURNING id
+                        """, (client.full_name, client.passport_data, client.phone_number,
+                            client.email, client.address, password_hash))
+                        client_id = cur.fetchone()[0]
+                        self.db_manager.conn.commit()
+                        
+                else:
+                    # Создаем клиента без пароля (только для админки)
+                    client_id = self.db_manager.create_client(client)
+                    
                 messagebox.showinfo("Успех", f"Клиент успешно добавлен с ID: {client_id}")
                 dialog.destroy()
                 self.load_clients()

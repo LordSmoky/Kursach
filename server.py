@@ -8,8 +8,8 @@ from datetime import date
 from decimal import Decimal
 
 app = Flask(__name__, static_folder='web', static_url_path='')
-app.secret_key = 'super_secret_key_for_session' # В продакшене заменить!
-CORS(app) # Разрешаем запросы с браузера
+app.secret_key = 'super_secret_key_for_session' 
+CORS(app)
 
 # Инициализация менеджера БД
 db = DatabaseManager(DB_CONFIG)
@@ -88,7 +88,7 @@ def get_my_deposits():
     for d in deposits:
         # Считаем накопленный процент на лету
         try:
-            profit = db.calculate_interest(d.id) if d.status == 'active' else 0
+            profit = db.calculate_interest(d.id) if d.status in ['active', 'closed'] else 0
         except:
             profit = 0
             
